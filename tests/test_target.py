@@ -17,12 +17,11 @@
 
 import unittest
 from unittest.mock import MagicMock
-from unittest.mock import patch
 import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from mht.target import Target
+from lmb.target import Target
 
 
 class TestTarget(unittest.TestCase):
@@ -32,9 +31,7 @@ class TestTarget(unittest.TestCase):
         """Set up."""
         self.filter = MagicMock()
 
-    @patch('mht.target.Track')
-    def test_initial(self, trackmock):
+    def test_initial(self):
         """Test creation of new target."""
-        t = Target.initial(self.filter, 0)
-
-        self.assertEqual(len(t.tracks), 1)
+        model = MagicMock()
+        Target(0, model)

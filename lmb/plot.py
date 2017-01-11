@@ -25,11 +25,11 @@ from .utils import cov_ellipse
 CMAP = matplotlib.colors.ListedColormap(RandomState(0).rand(256, 3))
 
 
-def plot_trace(trace, c=0, covellipse=True, **kwargs):
+def plot_trace(t, c=0, covellipse=True, **kwargs):
     """Plot single trace."""
     xs = []
     ys = []
-    for x, P in trace:
+    for ty, x, P in t.history:
         pos = (float(x[0]), float(x[1]))
         xs.append(pos[0])
         ys.append(pos[1])
@@ -40,11 +40,10 @@ def plot_trace(trace, c=0, covellipse=True, **kwargs):
     plt.plot(xs, ys, marker='*', color=CMAP(c))
 
 
-def plot_hyptrace(gh, cseed=0, covellipse=True, **kwargs):
-    """Plot hypothesis trace."""
-    for tr in gh.tracks:
-        plot_trace(tr.filter.trace, tr.target._id + cseed, covellipse,
-                   **kwargs)
+def plot_traces(targets, cseed=0, covellipse=True, **kwargs):
+    """Plot all targets' traces."""
+    for t in targets:
+        plot_trace(t, t.id + cseed, covellipse, **kwargs)
 
 
 def plot_cov_ellipse(cov, pos, nstd=2, **kwargs):
@@ -54,20 +53,6 @@ def plot_cov_ellipse(cov, pos, nstd=2, **kwargs):
 
     plt.gca().add_artist(ellip)
     return ellip
-
-
-def plot_hypothesis(gh, cseed=0, covellipse=True, **kwargs):
-    """Plot targets."""
-    options = {'edgecolors': 'k'}
-    options.update(kwargs)
-
-    for tr in gh.tracks:
-        pos = (tr.filter.x[0], tr.filter.x[1])
-        plt.scatter(*pos, c=tr.target._id+cseed, cmap=CMAP, **options)
-        if covellipse:
-            ca = plot_cov_ellipse(tr.filter.P[0:2, 0:2], pos)
-            ca.set_alpha(0.5)
-            ca.set_facecolor(CMAP(tr._id + cseed))
 
 
 def plot_scan(scan, covellipse=True, **kwargs):
@@ -89,7 +74,7 @@ def plot_scan(scan, covellipse=True, **kwargs):
 
 def plot_bbox(obj, cseed=0, **kwargs):
     """Plot bounding box."""
-    id_ = getattr(obj, '_id', 0)
+    id_ = getattr(obj, 'id', 0)
     options = {
         'alpha': 0.3,
         'color': CMAP(id_ + cseed)

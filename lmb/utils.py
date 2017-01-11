@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-LARGE = 10000
+LARGE = 10000.0
 import numpy as np
 from math import sin, cos, pi, sqrt
 
@@ -107,3 +107,10 @@ def gaussian_bbox(x, P, nstd=2):
 def within(p, bbox):
     """Check if point is within bbox."""
     return ((bbox[0] <= p[0] <= bbox[1]) and (bbox[2] <= p[1] <= bbox[3]))
+
+
+def nll(x):
+    """NLL."""
+    if x < 1e-8:
+        return LARGE
+    return -np.log(x)

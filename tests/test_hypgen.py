@@ -21,7 +21,7 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from mht.hypgen import murty, permgen, lap
+from lmb.hypgen import murty, permgen, lap
 
 MURTY_COST = np.matrix([[7, 51, 52, 87, 38, 60, 74, 66, 0, 20],
                         [50, 12, 0, 64, 8, 53, 0, 46, 76, 42],

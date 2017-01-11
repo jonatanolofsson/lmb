@@ -16,41 +16,58 @@
 """
 
 import numpy as np
+from scipy.stats import multivariate_normal
+
+
+def sample_normal(Q, N):
+    """Generate random samples and their weights."""
+    var = multivariate_normal(np.zeros(Q.shape[0]), Q)
+    s = var.rvs(N)
+    return s
 
 
 class ConstantVelocityModel:
     """Constant velocity motion model."""
 
-    def __init__(self, q):
+    def __init__(self, q, pS):
         """Init."""
         self.q = q
+        self.pS = pS
 
-    def __call__(self, xprev, Pprev, dT):
+    def __call__(self, pdf, dT):
         """Step model."""
-        x = xprev
         F = np.array([[1, 0, dT, 0],
                        [0, 1, 0, dT],
                        [0, 0, 1, 0],
                        [0, 0, 0, 1]])
-        Q = np.array([[dT ** 3 / 3, 0, dT ** 2 / 2, 0],
-                       [0, dT ** 3 / 3, 0, dT ** 2 / 2],
-                       [0, 0, dT, 0],
-                       [0, 0, 0, dT]]) * self.q
-        x = F @ xprev
-        P = F @ Pprev @ F.T + Q
+        Q = np.array([[dT ** 3 / 3, 0,           dT ** 2 / 2, 0],
+                      [0,           dT ** 3 / 3, 0,           dT ** 2 / 2],
+                      [dT ** 2 / 2, 0,           dT,          0],
+                      [0,           dT ** 2 / 2, 0,           dT]]) * self.q
 
-        return (x, P)
+        e = sample_normal(Q, len(pdf.x))
+        pdf.x = (F @ pdf.x.T).T + e
+        pdf.w *= self.pS
 
 
 def position_measurement(x):
     """Velocity measurement model."""
-    H = np.array([[1, 0, 0, 0],
-                   [0, 1, 0, 0]])
-    return (H @ x, H)
+    H = np.array([[1, 0, 0, 0], [0, 1, 0, 0]])
+    return (H @ x.T).T
 
 
 def velocity_measurement(x):
     """Velocity measurement model."""
-    H = np.array([[0, 0, 1, 0],
-                   [0, 0, 0, 1]])
-    return (H @ x, H)
+    H = np.array([[0, 0, 1, 0], [0, 0, 0, 1]])
+    return (H @ x.T).T
+
+class UniformClutter:
+    """Uniform clutter model."""
+
+    def __init__(self, intensity):
+        """Init."""
+        self.intensity = intensity
+
+    def __call__(self, z):
+        """Evaluate at z."""
+        return self.intensity

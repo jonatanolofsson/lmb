@@ -21,7 +21,7 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import mht
+import lmb
 
 
 class TestMV2D(unittest.TestCase):
@@ -30,9 +30,9 @@ class TestMV2D(unittest.TestCase):
     def setUp(self):
         """Set up."""
         self.x = np.array([0] * 4)
-        self.mfn = mht.models.position_measurement
+        self.mfn = lmb.models.position_measurement
 
     def test_measure(self):
         """Test simple update."""
-        z, H = self.mfn(self.x)
+        z = self.mfn(self.x)
         self.assertAlmostEqual(z[0], 0)

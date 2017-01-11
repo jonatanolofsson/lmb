@@ -21,7 +21,7 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import mht
+import lmb
 
 
 class TestCV2D(unittest.TestCase):
@@ -31,10 +31,11 @@ class TestCV2D(unittest.TestCase):
         """Set up."""
         self.x = np.array([0] * 4)
         self.P = np.eye(4)
-        self.model = mht.models.ConstantVelocityModel(0.1)
+        self.pdf = lmb.pf.PF.from_gaussian(self.x, self.P, 100000)
+        self.model = lmb.models.ConstantVelocityModel(0.1, 1)
 
     def test_update(self):
         """Test simple update."""
         dT = 1
-        x, P = self.model(self.x, self.P, dT)
-        self.assertAlmostEqual(x[0], self.x[0] + self.x[2] * dT)
+        self.model(self.pdf, dT)
+        self.assertAlmostEqual(self.pdf.mean()[0], self.x[0] + self.x[2] * dT, 2)  # noqa

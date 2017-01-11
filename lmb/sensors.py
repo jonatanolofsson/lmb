@@ -15,32 +15,18 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from math import exp, log
+import numpy as np
 
 from .utils import LARGE, within
+from .models import position_measurement
 
 
-class Sensor:
-    """Sensor base class."""
-
-    def __init__(self, score_extraneous, score_miss):
-        """Init."""
-        self.score_extraneous = score_extraneous
-        self.score_miss = score_miss
-        self.score_found = -log(1 - exp(-score_miss)) \
-            if score_miss > 0 else LARGE
-
-        self._id = Sensor._counter
-        Sensor._counter += 1
-Sensor._counter = 0
-
-
-class EyeOfMordor(Sensor):
+class EyeOfMordor:
     """Ideal sensor that sees all."""
 
-    def __init__(self, score_extraneous, score_miss):
+    def __init__(self):
         """Init."""
-        super(EyeOfMordor, self).__init__(score_extraneous, score_miss)
+        self.model = position_measurement
 
     def bbox(self):
         """Return FOV bbox."""
@@ -50,13 +36,17 @@ class EyeOfMordor(Sensor):
         """Return nll prob of detection, given fov."""
         return True
 
+    def pD(self, states):
+        """Probability of detection for states x."""
+        return np.ones(len(states))
 
-class Satellite(Sensor):
+
+class Satellite:
     """Satellite sensor with field-of-view."""
 
-    def __init__(self, fov, score_extraneous, score_miss):
+    def __init__(self, fov):
         """Init."""
-        super(Satellite, self).__init__(score_extraneous, score_miss)
+        self.model = position_measurement
         self.fov = fov
 
     def bbox(self):
@@ -66,3 +56,7 @@ class Satellite(Sensor):
     def in_fov(self, state):
         """Return nll prob of detection, given fov."""
         return within(state, self.fov)
+
+    def pD(self, states):
+        """Probability of detection for states x."""
+        return np.array([self.in_fov(x) for x in states])
