@@ -17,7 +17,6 @@
 
 import sqlite3
 import pickle
-import multiprocessing as mp
 from collections import defaultdict
 import itertools
 import numpy as np
@@ -70,7 +69,7 @@ Parameters.rBmax = 0.8
 Parameters.lambdaB = 0.1
 Parameters.kappa = models.UniformClutter(0.01)
 Parameters.init_target = DefaultTargetInit(1, 1, 1)
-Parameters.w_lim = 1e-8
+Parameters.w_lim = 1e-4
 Parameters.r_lim = 1e-3
 
 
@@ -85,8 +84,6 @@ class LMB:
         self.dbc = sqlite3.connect(dbfile)
         self.db = self.dbc.cursor()
         self._init_db()
-
-        self.mppool = mp.Pool()
 
     def _init_db(self):
         """Init database."""
@@ -125,7 +122,25 @@ class LMB:
             pickles = get_targets(bbox)
         return {pickle.loads(p[0]) for p in pickles}
 
-    def nof_targets(self, bbox=None):
+    def nof_targets(self, rlim=0, bbox=None):
+        """Count expected number of targets in region."""
+        if bbox is None:
+            c = self.db.execute("SELECT COUNT(*) FROM targets WHERE r > ?;",
+                                (rlim,))
+        else:
+            c = self.db.execute(("SELECT COUNT(*) FROM targets "
+                                 "INNER JOIN target_index "
+                                 "ON targets.id = target_index.id WHERE "
+                                 "targets.r > ? AND "
+                                 "target_index.max_x >= {} AND "
+                                 "target_index.min_x <= {} AND "
+                                 "target_index.max_y >= {} AND "
+                                 "target_index.min_y <= {}"
+                                 ";").format(*bbox), (rlim,))
+        res = c.fetchone()[0]
+        return 0 if res is None else res
+
+    def enof_targets(self, bbox=None):
         """Count expected number of targets in region."""
         if bbox is None:
             c = self.db.execute("SELECT SUM(r) FROM targets;")
@@ -166,7 +181,7 @@ class LMB:
 
         connected_targets = set().union(*(ts for ts in targets.values()))
         for t in active_targets - connected_targets:
-            yield ([], [t])
+            yield ([t], [])
 
     def birth(self, reports):
         """Add newborn targets to filter."""
@@ -203,14 +218,12 @@ class LMB:
 
     def predict(self, dT=1, bbox=None):
         """Move to next timestep."""
-        # prediction = set( # self.mppool.map( # predict, # ((self.params, t, dT) for t in self.query_targets(bbox))))  # noqa
         prediction = {predict((self.params, t, dT))
                       for t in self.query_targets(bbox)}
         self._save_targets(prediction)
 
     def register_scan(self, scan):
         """Register new scan."""
-        # res = self.mppool.map( # correct, # ((self.params, targets, reports, scan.sensor) # for targets, reports in self._cluster(scan)))  # noqa
         res = [correct((self.params, targets, reports, scan.sensor))
                for targets, reports in self._cluster(scan)]
 

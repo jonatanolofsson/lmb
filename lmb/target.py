@@ -74,8 +74,10 @@ class Target:
     def normalize(self, w):
         """Normalize target pdf and weighting."""
         self.r /= w
+        if self.r > 1.0:
+            self.r = 1.0
         self.pdf.normalize()
 
     def __repr__(self):
         """String representation of object."""
-        return "T({})".format(self.id)
+        return "T({} / {})".format(self.id, self.r)

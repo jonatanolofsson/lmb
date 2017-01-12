@@ -33,7 +33,11 @@ np.random.seed(1)
 def draw():
     """Create plot."""
     params = lmb.Parameters()
+    params.N_max = 50000
+    params.lambdaB = 0.1
+    params.kappa = lmb.models.UniformClutter(0.0001)
     params.init_target = lmb.DefaultTargetInit(1, 1, 1)
+    params.r_lim = 0.02
     tracker = lmb.LMB(params)
     sensor = lmb.sensors.EyeOfMordor()
     targets = [
@@ -41,27 +45,28 @@ def draw():
         np.array([0.0, 10.0, 1, -0.5]),
     ]
     ntargets_true = []
+    ntargets_verified = []
     ntargets = []
     lmb.plot.plt.subplot(2, 1, 1)
-    for k in range(20):
+    for k in range(30):
         print()
         print("k:", k)
         if k > 0:
             tracker.predict(1)
             for t in targets:
                 t[0:2] += t[2:]
-        # if k == 5:
-            # targets.append(np.array([5.0, 5.0, 1.0, 0.0]))
-        # if k % 7 == 0:
-            # targets.append(np.random.multivariate_normal(
-                # np.array([k, 7.0, 0.0, 0.0]),
-                # np.diag([0.5] * 4)))
-        # if k % 7 == 1:
-            # del targets[-1]
-        # if k == 10:
-            # targets.append(np.array([10.0, -30.0, 1.0, -0.5]))
-        # if k == 20:
-            # targets.append(np.array([k, 0.0, 1.0, 4.0]))
+        if k == 5:
+            targets.append(np.array([5.0, 5.0, 1.0, 0.0]))
+        if k % 7 == 0:
+            targets.append(np.random.multivariate_normal(
+                np.array([k, 7.0, 0.0, 0.0]),
+                np.diag([0.5] * 4)))
+        if k % 7 == 1:
+            del targets[-1]
+        if k == 10:
+            targets.append(np.array([10.0, -30.0, 1.0, -0.5]))
+        if k == 20:
+            targets.append(np.array([k, 0.0, 1.0, 4.0]))
 
         reports = {lmb.GaussianReport(
             # np.random.multivariate_normal(t[0:2], np.diag([0.01] * 2)),  # noqa
@@ -72,7 +77,8 @@ def draw():
             for i, t in enumerate(targets)}
         this_scan = lmb.Scan(sensor, reports)
         tracker.register_scan(this_scan)
-        ntargets.append(tracker.nof_targets())
+        ntargets.append(tracker.enof_targets())
+        ntargets_verified.append(tracker.nof_targets(0.7))
         ntargets_true.append(len(targets))
         lmb.plot.plot_scan(this_scan)
         plt.plot([t[0] for t in targets],
@@ -84,6 +90,7 @@ def draw():
     lmb.plot.plt.subplot(2, 1, 2)
     lmb.plot.plt.plot(ntargets, label='Estimate')
     lmb.plot.plt.plot(ntargets_true, label='True')
+    lmb.plot.plt.plot(ntargets_verified, label='Verified')
     lmb.plot.plt.ylabel('# Targets')
     plt.legend(fancybox=True, framealpha=0.5, loc=4, prop={'size': 10})
     lmb.plot.plt.axis([-1, k + 1, min(ntargets + ntargets_true) - 0.1,

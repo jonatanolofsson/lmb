@@ -33,6 +33,8 @@ def correct(args):
     (params, targets, reports, sensor) = args
     N = len(targets)
     M = len(reports)
+    print("Cluster:", N, M)
+    print("Targets:", targets)
 
     if N == 0:
         return targets, reports
@@ -46,7 +48,9 @@ def correct(args):
     weights = np.zeros((N, M + 1))
     w_sum = 0
 
+    nofh = 0
     for score, assignment in murty(C):
+        nofh += 1
         assignment = np.array(assignment)
         w = exp(-score)
         w_sum += w
@@ -56,6 +60,7 @@ def correct(args):
 
         if w < params.w_lim:
             break
+    print("Nofh:", nofh)
 
     weights /= w_sum
 

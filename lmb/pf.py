@@ -53,17 +53,8 @@ class PF:
 
     def predict(self, params, model, dT):
         """Prediction step."""
-        # print("before:", self.x)
-        if any(float(px) > 1e100 for p in self.x for px in p):
-            print("x pre")
-            exit()
         self.resample(params)
-        if any(float(px) > 1e100 for p in self.x for px in p):
-            print("x")
-            exit()
-        # print("resampling:", self.x)
         model(self, dT)
-        # print("after:", self.x)
         self.eta = self.w.sum()
         self.normalize()
 
