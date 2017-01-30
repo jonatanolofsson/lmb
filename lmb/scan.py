@@ -28,7 +28,6 @@ class GaussianReport:
         self.sensor = None
         self.source = source
         self.tpos = tpos
-        self._bbox = gaussian_bbox(self.z[0:2], self.R[0:2, 0:2], 2)
         self.ruk = 0
         self.rB = 0
 
@@ -36,9 +35,9 @@ class GaussianReport:
         """Calculate the likelihood of x generating report."""
         return multivariate_normal.pdf(self.sensor.model(x), self.z, self.R)
 
-    def bbox(self):
+    def bbox(self, nstd):
         """Return report bbox."""
-        return self._bbox
+        return gaussian_bbox(self.z[0:2], self.R[0:2, 0:2], nstd)
 
     def __repr__(self):
         """Return string representation of reports."""

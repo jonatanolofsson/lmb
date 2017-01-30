@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 from copy import deepcopy
-from .utils import gaussian_bbox, nll
+from .utils import nll
 
 
 class Target:
@@ -67,9 +67,9 @@ class Target:
         """NLL of target being false."""
         return nll(1 - self.r)
 
-    def bbox(self):
+    def bbox(self, nstd=2):
         """Return target bounding box."""
-        return gaussian_bbox(self.pdf.mean()[0:2], self.pdf.cov()[0:2, 0:2])
+        return self.pdf.bbox(nstd)
 
     def normalize(self, w):
         """Normalize target pdf and weighting."""

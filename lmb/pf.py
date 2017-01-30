@@ -16,6 +16,7 @@
 """
 import numpy as np
 from scipy.stats import multivariate_normal
+from .utils import gaussian_bbox
 
 
 class PF:
@@ -91,7 +92,7 @@ class PF:
 
     def neff(self):
         """Return effective number of particles."""
-        return 1.0 / sum(w**2 for w in self.W)
+        return 1.0 / sum(w**2 for w in self.w)
 
     def resample(self, params=None, N=None, neff=None):
         """Resample algorithm."""
@@ -123,6 +124,10 @@ class PF:
     def cov(self):
         """Calculate variance."""
         return np.cov(self.x, rowvar=False, aweights=self.w)
+
+    def bbox(self, nstd=2):
+        """Get pdf bbox."""
+        return gaussian_bbox(self.mean()[0:2], self.cov()[0:2, 0:2])
 
     def __bool__(self):
         """Boolean operator."""

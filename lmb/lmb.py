@@ -71,6 +71,7 @@ Parameters.kappa = models.UniformClutter(0.01)
 Parameters.init_target = DefaultTargetInit(1, 1, 1)
 Parameters.w_lim = 1e-4
 Parameters.r_lim = 1e-3
+Parameters.nstd = 2
 
 
 class LMB:
@@ -156,9 +157,9 @@ class LMB:
         res = c.fetchone()[0]
         return 0 if res is None else res
 
-    def _overlapping_targets(self, targets, r):
+    def _overlapping_targets(self, targets, r, nstd=2):
         """Select targets within reasonable range."""
-        return {t for t in targets if overlap(t.bbox(), r.bbox())}
+        return {t for t in targets if overlap(t.bbox(nstd), r.bbox(nstd))}
 
     def _cluster(self, scan):
         """Collect clusters of targets."""
@@ -168,7 +169,8 @@ class LMB:
         reports = defaultdict(set)
         connections = {r: set() for r in scan.reports}
         for r in scan.reports:
-            targets[r] = self._overlapping_targets(active_targets, r)
+            targets[r] = self._overlapping_targets(active_targets, r,
+                                                   self.params.nstd)
             for t in targets[r]:
                 reports[t].add(r)
         for r in scan.reports:
