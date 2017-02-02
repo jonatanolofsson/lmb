@@ -23,7 +23,7 @@ import numpy as np
 import numbers
 from scipy.linalg import block_diag
 
-from .utils import overlap, connected_components
+from .utils import connected_components
 from .lmb_filter import predict, correct
 from .target import Target
 from .pf import PF
@@ -101,12 +101,12 @@ class LMB:
         """Register a new target id."""
         return self.db.execute("INSERT INTO targets DEFAULT VALUES;").lastrowid
 
-    def query_targets(self, bbox=None):
+    def query_targets(self, aa_bbox=None):
         """Get targets intersecting boundingbox."""
-        if bbox is None:
+        if aa_bbox is None:
             pickles = self.db.execute("SELECT data FROM targets")
         else:
-            def get_targets(bbox):
+            def get_targets(aa_bbox):
                 #  PySQLite standard formatting doesn't work for some
                 #  reason.. bug? Using .format instead, since known data.
                 return self.db.execute((
@@ -114,18 +114,18 @@ class LMB:
                     "INNER JOIN target_index "
                     "ON targets.id = target_index.id WHERE "
                     "target_index.max_x >= {} AND "
-                    "target_index.min_x <= {} AND "
                     "target_index.max_y >= {} AND "
+                    "target_index.min_x <= {} AND "
                     "target_index.min_y <= {}"
-                    ";").format(*bbox))
+                    ";").format(*aa_bbox))
 
             # FIXME: Use multiple queries if around wrapping-points!
-            pickles = get_targets(bbox)
+            pickles = get_targets(aa_bbox)
         return {pickle.loads(p[0]) for p in pickles}
 
-    def nof_targets(self, rlim=0, bbox=None):
+    def nof_targets(self, rlim=0, aa_bbox=None):
         """Count expected number of targets in region."""
-        if bbox is None:
+        if aa_bbox is None:
             c = self.db.execute("SELECT COUNT(*) FROM targets WHERE r > ?;",
                                 (rlim,))
         else:
@@ -134,36 +134,37 @@ class LMB:
                                  "ON targets.id = target_index.id WHERE "
                                  "targets.r > ? AND "
                                  "target_index.max_x >= {} AND "
-                                 "target_index.min_x <= {} AND "
                                  "target_index.max_y >= {} AND "
+                                 "target_index.min_x <= {} AND "
                                  "target_index.min_y <= {}"
-                                 ";").format(*bbox), (rlim,))
+                                 ";").format(*aa_bbox), (rlim,))
         res = c.fetchone()[0]
         return 0 if res is None else res
 
-    def enof_targets(self, bbox=None):
+    def enof_targets(self, aa_bbox=None):
         """Count expected number of targets in region."""
-        if bbox is None:
+        if aa_bbox is None:
             c = self.db.execute("SELECT SUM(r) FROM targets;")
         else:
             c = self.db.execute(("SELECT SUM(targets.r) FROM targets "
                                  "INNER JOIN target_index "
                                  "ON targets.id = target_index.id WHERE "
                                  "target_index.max_x >= {} AND "
-                                 "target_index.min_x <= {} AND "
                                  "target_index.max_y >= {} AND "
+                                 "target_index.min_x <= {} AND "
                                  "target_index.min_y <= {}"
-                                 ";").format(*bbox))
+                                 ";").format(*aa_bbox))
         res = c.fetchone()[0]
         return 0 if res is None else res
 
     def _overlapping_targets(self, targets, r, nstd=2):
         """Select targets within reasonable range."""
-        return {t for t in targets if overlap(t.bbox(nstd), r.bbox(nstd))}
+        rbox = r.bbox(nstd)
+        return {t for t in targets if t.bbox(nstd).intersects(rbox)}
 
     def _cluster(self, scan):
         """Collect clusters of targets."""
-        active_targets = self.query_targets(scan.sensor.bbox())
+        active_targets = self.query_targets(scan.sensor.aa_bbox())
 
         targets = defaultdict(set)
         reports = defaultdict(set)
@@ -201,9 +202,9 @@ class LMB:
         for t in targets:
             if t is not None:
                 self.db.execute(("REPLACE INTO target_index "
-                                 "(id, min_x, max_x, min_y, max_y) "
+                                 "(id, min_x, min_y, max_x, max_y) "
                                  "VALUES ({}, {}, {}, {}, {});"
-                                 ).format(t.id, *t.bbox()))
+                                 ).format(t.id, *t.aa_bbox()))
                 self.db.execute("UPDATE targets SET r=?, data=? "
                                 "WHERE id=?", (t.r, pickle.dumps(t), t.id))
         self.dbc.commit()
@@ -218,10 +219,10 @@ class LMB:
         self.dbc.commit()
         targets -= remove
 
-    def predict(self, dT=1, bbox=None):
+    def predict(self, dT=1, aa_bbox=None):
         """Move to next timestep."""
         prediction = {predict((self.params, t, dT))
-                      for t in self.query_targets(bbox)}
+                      for t in self.query_targets(aa_bbox)}
         self._save_targets(prediction)
 
     def register_scan(self, scan):

@@ -27,17 +27,19 @@ CMAP = matplotlib.colors.ListedColormap(RandomState(0).rand(256, 3))
 
 def plot_trace(t, c=0, covellipse=True, **kwargs):
     """Plot single trace."""
-    xs = []
-    ys = []
+    xs, ys, vxs, vys = [], [], [], []
     for ty, x, P in t.history:
-        pos = (float(x[0]), float(x[1]))
-        xs.append(pos[0])
-        ys.append(pos[1])
+        state = x.tolist()
+        xs.append(state[0])
+        ys.append(state[1])
+        vxs.append(state[2])
+        vys.append(state[3])
         if covellipse:
-            ca = plot_cov_ellipse(P[0:2, 0:2], pos)
+            ca = plot_cov_ellipse(P[0:2, 0:2], state[0:2])
             ca.set_alpha(0.3)
             ca.set_facecolor(CMAP(c))
     plt.plot(xs, ys, marker='*', color=CMAP(c))
+    plt.quiver(xs[-1], ys[-1], vxs[-1], vys[-1], color=CMAP(c))
 
 
 def plot_traces(targets, cseed=0, covellipse=True, **kwargs):

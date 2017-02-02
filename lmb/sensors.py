@@ -17,46 +17,56 @@
 
 import numpy as np
 
-from .utils import LARGE, within
+from .utils import LARGE
 from .models import position_measurement
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
+from shapely.geometry import box
 
 
-class EyeOfMordor:
-    """Ideal sensor that sees all."""
-
-    def __init__(self):
-        """Init."""
-        self.model = position_measurement
-
-    def bbox(self):
-        """Return FOV bbox."""
-        return (-LARGE, LARGE, -LARGE, LARGE)
-
-    def in_fov(self, state):
-        """Return nll prob of detection, given fov."""
-        return True
-
-    def pD(self, states):
-        """Probability of detection for states x."""
-        return np.ones(len(states))
-
-
-class Satellite:
-    """Satellite sensor with field-of-view."""
+class SquareSensor:
+    """Square sensor."""
 
     def __init__(self, fov):
         """Init."""
+        self.fov = Polygon(fov)
         self.model = position_measurement
-        self.fov = fov
 
     def bbox(self):
         """Return FOV bbox."""
         return self.fov
 
+    def aa_bbox(self):
+        """Return axis-aligned bounding box."""
+        return self.fov.bounds
+
     def in_fov(self, state):
         """Return nll prob of detection, given fov."""
-        return within(state, self.fov)
+        return self.fov.contains(Point(*state))
 
     def pD(self, states):
         """Probability of detection for states x."""
         return np.array([self.in_fov(x) for x in states])
+
+
+class Satellite(SquareSensor):
+    """Satellite sensor with field-of-view."""
+
+    def __init__(self, aa_bbox):
+        """Init."""
+        super().__init__(box(aa_bbox))
+
+
+class EyeOfMordor(SquareSensor):
+    """Ideal sensor that sees all."""
+
+    def __init__(self):
+        """Init."""
+        super().__init__([(-LARGE, LARGE),
+                          (-LARGE, -LARGE),
+                          (LARGE, -LARGE),
+                          (LARGE, LARGE)])
+
+    def pD(self, states):
+        """Probability of detection for states x."""
+        return np.ones(len(states))

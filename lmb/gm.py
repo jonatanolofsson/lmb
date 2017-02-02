@@ -1,4 +1,4 @@
-"""Particle tracker for LMB tracker."""
+"""Gaussian Mixture for LMB tracker."""
 
 """
     This program is free software: you can redistribute it and/or modify
@@ -16,41 +16,26 @@
 """
 import numpy as np
 from scipy.stats import multivariate_normal
-from .utils import gaussian_bbox, gaussian_aa_bbox
+from .utils import gaussian_bbox
 
 
-class PF:
+class GM:
     """Particle tracker implementation."""
 
     def __init__(self, prior=None):
         """Init."""
         if prior:
-            self.w, self.x = prior
+            self.w, self.x, self.P = prior
         else:
             self.clear()
         self.normalize()
 
-    def from_gaussian(z, R, N):
-        """Init new PF from gaussian prior."""
-        var = multivariate_normal(z, R)
-        s = var.rvs(N)
-        w = np.full((N,), 1/N)
-
-        return PF((w, s))
+    def from_gaussian(z, R):
+        """Init new GM from gaussian prior."""
+        return GM(([1], [z], [R]))
 
     def join(weights, pdfs):
-        """Join multiple PFs into one."""
-        w = [w * pdf.w for w, pdf in zip(weights, pdfs)
-             if w > 1e-6 and len(pdf.x) > 0]
-        if len(w) > 0:
-            w = np.concatenate(w)
-            x = [pdf.x for w, pdf in zip(weights, pdfs)
-                 if w > 1e-6 and len(pdf.x) > 0]
-            x = np.concatenate(x) if len(x) else np.empty(0)
-        else:
-            w, x = np.empty(0), np.empty(0)
-        self = PF((w, x))
-        return self
+        """Join multiple GMs into one."""
 
     def predict(self, params, model, dT):
         """Prediction step."""
@@ -84,7 +69,7 @@ class PF:
 
     def clear(self):
         """Clear filter."""
-        self.w, self.x = (np.empty(0), np.empty(0))
+        self.w, self.x, self.P = (np.empty(0), np.empty(0), np.empty(0))
 
     def normalize(self):
         """Re-normalize the PDF."""
@@ -128,10 +113,6 @@ class PF:
     def bbox(self, nstd=2):
         """Get pdf bbox."""
         return gaussian_bbox(self.mean()[0:2], self.cov()[0:2, 0:2])
-
-    def aa_bbox(self, nstd=2):
-        """Get axis-aligned pdf bbox."""
-        return gaussian_aa_bbox(self.mean()[0:2], self.cov()[0:2, 0:2])
 
     def __bool__(self):
         """Boolean operator."""

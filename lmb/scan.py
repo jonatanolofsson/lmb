@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-from .utils import gaussian_bbox
+from .utils import gaussian_bbox, gaussian_aa_bbox
 from scipy.stats import multivariate_normal
 
 
@@ -38,6 +38,10 @@ class GaussianReport:
     def bbox(self, nstd):
         """Return report bbox."""
         return gaussian_bbox(self.z[0:2], self.R[0:2, 0:2], nstd)
+
+    def aa_bbox(self, nstd):
+        """Return report bbox."""
+        return gaussian_aa_bbox(self.z[0:2], self.R[0:2, 0:2], nstd)
 
     def __repr__(self):
         """Return string representation of reports."""

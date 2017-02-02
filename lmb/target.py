@@ -29,6 +29,7 @@ class Target:
         self.pdf = pdf
         self.assignments = {}
         self.history = []
+        self.history.append(('i', self.pdf.mean(), self.pdf.cov()))
 
     def correct(self, weights):
         """Create new object to represent this target in the next timestep."""
@@ -70,6 +71,10 @@ class Target:
     def bbox(self, nstd=2):
         """Return target bounding box."""
         return self.pdf.bbox(nstd)
+
+    def aa_bbox(self, nstd=2):
+        """Return axis-aligned target bounding box."""
+        return self.pdf.aa_bbox(nstd)
 
     def normalize(self, w):
         """Normalize target pdf and weighting."""

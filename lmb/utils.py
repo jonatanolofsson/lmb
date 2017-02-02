@@ -18,6 +18,7 @@
 LARGE = 10000.0
 import numpy as np
 from math import sin, cos, pi, sqrt
+from shapely.geometry.polygon import Polygon
 
 
 class PrioItem:
@@ -82,13 +83,20 @@ def cov_ellipse(cov, nstd):
     """Get the covariance ellipse."""
     vals, vecs = eigsorted(cov)
     r1, r2 = nstd * np.sqrt(vals)
-    theta = np.degrees(np.arctan2(*vecs[:, 0][::-1]))
+    theta = np.arctan2(*vecs[:, 0][::-1])
 
     return r1, r2, theta
 
 
 def gaussian_bbox(x, P, nstd=2):
     """Return boudningbox for gaussian."""
+    r1, r2, theta = cov_ellipse(P, nstd)
+    corners = rotmat(theta) @ np.array([[-r1, -r1, r1, r1], [r2, -r2, -r2, r2]]) + x[:, np.newaxis]
+    return Polygon(corners.T)
+
+
+def gaussian_aa_bbox(x, P, nstd=2):
+    """Return axis-aligned boudningbox for gaussian."""
     r1, r2, theta = cov_ellipse(P, nstd)
     ux = r1 * cos(theta)
     uy = r1 * sin(theta)
@@ -99,14 +107,15 @@ def gaussian_bbox(x, P, nstd=2):
     dy = sqrt(uy*uy + vy*vy)
 
     return (float(x[0] - dx),
-            float(x[0] + dx),
             float(x[1] - dy),
+            float(x[0] + dx),
             float(x[1] + dy))
 
 
-def within(p, bbox):
-    """Check if point is within bbox."""
-    return ((bbox[0] <= p[0] <= bbox[1]) and (bbox[2] <= p[1] <= bbox[3]))
+def rotmat(theta):
+    """Create 2d rotation matrix for angle theta."""
+    c, s = np.cos(theta), np.sin(theta)
+    return np.matrix([[c, -s], [s, c]])
 
 
 def nll(x):
