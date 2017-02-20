@@ -101,11 +101,13 @@ class LMB:
         """Register a new target id."""
         return self.db.execute("INSERT INTO targets DEFAULT VALUES;").lastrowid
 
-    def query_targets(self, aa_bbox=None):
+    def query_targets(self, aa_bbox=None, rlim=None):
         """Get targets intersecting boundingbox."""
         if aa_bbox is None:
-            pickles = self.db.execute("SELECT data FROM targets")
+            rlimtxt = "" if rlim is None else ' WHERE r >= {}'.format(rlim)
+            pickles = self.db.execute("SELECT data FROM targets" + rlimtxt)
         else:
+            rlimtxt = "" if rlim is None else ' AND targets.r >= {}'.format(rlim)
             def get_targets(aa_bbox):
                 #  PySQLite standard formatting doesn't work for some
                 #  reason.. bug? Using .format instead, since known data.
@@ -116,7 +118,7 @@ class LMB:
                     "target_index.max_x >= {} AND "
                     "target_index.max_y >= {} AND "
                     "target_index.min_x <= {} AND "
-                    "target_index.min_y <= {}"
+                    "target_index.min_y <= {}" + rlimtxt +
                     ";").format(*aa_bbox))
 
             # FIXME: Use multiple queries if around wrapping-points!
@@ -227,12 +229,12 @@ class LMB:
 
     def register_scan(self, scan):
         """Register new scan."""
-        res = [correct((self.params, targets, reports, scan.sensor))
-               for targets, reports in self._cluster(scan)]
+        cres = [correct((self.params, targets, reports, scan.sensor))
+                for targets, reports in self._cluster(scan)]
 
-        targets = {t for s in res for t in s[0]}
+        targets = {t for c in cres for t in c.targets}
         self._kill_targets(targets)
         self._save_targets(targets)
-        reports = list(itertools.chain.from_iterable(
-            s[1] for s in res))
+        reports = list(itertools.chain.from_iterable(s.reports for s in cres))
         self.birth(reports)
+        return cres

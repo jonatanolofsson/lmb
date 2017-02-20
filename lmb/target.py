@@ -29,27 +29,27 @@ class Target:
         self.pdf = pdf
         self.assignments = {}
         self.history = []
-        self.history.append(('i', self.pdf.mean(), self.pdf.cov()))
+        self.history.append(('i', r, self.pdf.mean(), self.pdf.cov()))
 
     def correct(self, weights):
         """Create new object to represent this target in the next timestep."""
         self.r = weights.sum()
         if self.r > 1e-9:
             self.pdf = type(self.pdf).join(weights / self.r, self.assignments)
-            self.history.append(('c', self.pdf.mean(), self.pdf.cov()))
+            self.history.append(('c', self.r, self.pdf.mean(), self.pdf.cov()))
         else:
             self.r = 0
             self.pdf.clear()
-            self.history.append(('c', False, False))
+            self.history.append(('c', self.r, False, False))
 
     def predict(self, params, dT):
         """Move to next time step."""
         self.pdf.predict(params, self.model, dT)
         self.r *= self.pdf.eta
         if self.r > 1e-6:
-            self.history.append(('p', self.pdf.mean(), self.pdf.cov()))
+            self.history.append(('p', self.r, self.pdf.mean(), self.pdf.cov()))
         else:
-            self.history.append(('p', False, False))
+            self.history.append(('p', self.r, False, False))
             self.pdf.clear()
 
     def match(self, params, sensor, reports):

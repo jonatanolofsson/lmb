@@ -118,8 +118,27 @@ def rotmat(theta):
     return np.matrix([[c, -s], [s, c]])
 
 
+def normalize(x):
+    """Normalize vector x."""
+    return x / np.linalg.norm(x, axis=0)
+
+
 def nll(x):
     """NLL."""
     if x < 1e-8:
         return LARGE
     return -np.log(x)
+
+
+class df:
+    pass
+
+
+def mean(vals):
+    """Return mean of iterable."""
+    n = 0
+    S = 0.0
+    for v in vals:
+        S += v
+        n += 1
+    return S / n

@@ -17,7 +17,7 @@
 import numpy as np
 from math import exp
 
-from .utils import LARGE
+from .utils import LARGE, df
 from .hypgen import murty
 
 
@@ -33,11 +33,15 @@ def correct(args):
     (params, targets, reports, sensor) = args
     N = len(targets)
     M = len(reports)
-    print("Cluster:", N, M)
-    print("Targets:", targets)
+    # print("Cluster:", N, M)
+    # print("Targets:", targets)
 
     if N == 0:
-        return targets, reports
+        resdf = df()
+        resdf.targets = targets
+        resdf.reports = reports
+        resdf.nhyps = 0
+        return resdf
 
     C = np.full((N, M + 2 * N), LARGE)
     for i, t in enumerate(targets):
@@ -48,9 +52,9 @@ def correct(args):
     weights = np.zeros((N, M + 1))
     w_sum = 0
 
-    nofh = 0
+    nhyps = 0
     for score, assignment in murty(C):
-        nofh += 1
+        nhyps += 1
         assignment = np.array(assignment)
         w = exp(-score)
         w_sum += w
@@ -60,7 +64,7 @@ def correct(args):
 
         if w < params.w_lim:
             break
-    print("Nofh:", nofh)
+    print("nhyps:", nhyps)
 
     weights /= w_sum
 
@@ -70,4 +74,8 @@ def correct(args):
     for r, ruk in zip(reports, np.sum(weights, axis=0)):
         r.ruk = ruk
 
-    return targets, reports
+    resdf = df()
+    resdf.targets = targets
+    resdf.reports = reports
+    resdf.nhyps = nhyps
+    return resdf

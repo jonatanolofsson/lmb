@@ -25,10 +25,11 @@ from .utils import cov_ellipse
 CMAP = matplotlib.colors.ListedColormap(RandomState(0).rand(256, 3))
 
 
-def plot_trace(t, c=0, covellipse=True, **kwargs):
+def plot_trace(t, c=0, covellipse=True, max_back=None, **kwargs):
     """Plot single trace."""
+    max_back = max_back or 0
     xs, ys, vxs, vys = [], [], [], []
-    for ty, x, P in t.history:
+    for ty, r, x, P in t.history[-max_back:]:
         state = x.tolist()
         xs.append(state[0])
         ys.append(state[1])
@@ -38,14 +39,14 @@ def plot_trace(t, c=0, covellipse=True, **kwargs):
             ca = plot_cov_ellipse(P[0:2, 0:2], state[0:2])
             ca.set_alpha(0.3)
             ca.set_facecolor(CMAP(c))
-    plt.plot(xs, ys, marker='*', color=CMAP(c))
-    plt.quiver(xs[-1], ys[-1], vxs[-1], vys[-1], color=CMAP(c))
+    plt.plot(xs, ys, marker='*', color=CMAP(c), **kwargs)
+    plt.quiver(xs[-1], ys[-1], vxs[-1], vys[-1], color=CMAP(c), **kwargs)
 
 
-def plot_traces(targets, cseed=0, covellipse=True, **kwargs):
+def plot_traces(targets, cseed=0, covellipse=True, max_back=None, **kwargs):
     """Plot all targets' traces."""
     for t in targets:
-        plot_trace(t, t.id + cseed, covellipse, **kwargs)
+        plot_trace(t, t.id + cseed, covellipse, max_back, **kwargs)
 
 
 def plot_cov_ellipse(cov, pos, nstd=2, **kwargs):
