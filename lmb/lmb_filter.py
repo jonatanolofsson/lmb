@@ -62,9 +62,9 @@ def correct(args):
         assignment[assignment >= M] = M
         weights[ind, assignment[ind]] += w
 
-        if w < params.w_lim:
+        if w < params.w_lim or nhyps >= params.maxhyp:
             break
-    print("nhyps:", nhyps)
+    print("nhyps:", nhyps, "tracks:", N, "meas:", M)
 
     weights /= w_sum
 

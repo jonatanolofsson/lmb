@@ -22,7 +22,7 @@ from matplotlib.patches import Ellipse, Rectangle
 
 from .utils import cov_ellipse
 
-CMAP = matplotlib.colors.ListedColormap(RandomState(0).rand(256, 3))
+CMAP = matplotlib.colors.ListedColormap(RandomState(0).rand(256*256, 3))
 
 
 def plot_trace(t, c=0, covellipse=True, max_back=None, **kwargs):
@@ -35,12 +35,17 @@ def plot_trace(t, c=0, covellipse=True, max_back=None, **kwargs):
         ys.append(state[1])
         vxs.append(state[2])
         vys.append(state[3])
-        if covellipse:
-            ca = plot_cov_ellipse(P[0:2, 0:2], state[0:2])
-            ca.set_alpha(0.3)
-            ca.set_facecolor(CMAP(c))
-    plt.plot(xs, ys, marker='*', color=CMAP(c), **kwargs)
-    plt.quiver(xs[-1], ys[-1], vxs[-1], vys[-1], color=CMAP(c), **kwargs)
+    if covellipse:
+        ca = plot_cov_ellipse(P[0:2, 0:2], state[0:2], 4)
+        ce = plot_cov_ellipse(P[0:2, 0:2], state[0:2], 4)
+        ca.set_alpha(0.2)
+        ca.set_facecolor(CMAP(c))
+        ce.set_facecolor('none')
+        ce.set_edgecolor(CMAP(c))
+        ce.set_linewidth(4)
+    plt.plot(xs, ys, color=CMAP(c), **kwargs)
+    #plt.plot(xs[-1], ys[-1], marker='*', color=CMAP(c), **kwargs)
+    #plt.quiver(xs[-1], ys[-1], vxs[-1], vys[-1], color=CMAP(c), **kwargs)
 
 
 def plot_traces(targets, cseed=0, covellipse=True, max_back=None, **kwargs):

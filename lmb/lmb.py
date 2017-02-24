@@ -45,7 +45,7 @@ class DefaultTargetInit:
         """Init new target from report."""
         r = min(report.rB * tracker.params.lambdaB(report),
                 tracker.params.rBmax, 1.0)
-        print("New target:", r)
+        print("New target:", r, "lambdaB", tracker.params.lambdaB(report))
         if r < 1e-6:
             return None
         id_ = tracker.new_id()
@@ -72,6 +72,7 @@ Parameters.lambdaB = staticmethod(lambda r: r.sensor.lambdaB)
 Parameters.kappa = models.UniformClutter(0.01)
 Parameters.init_target = DefaultTargetInit(1, 1, 1)
 Parameters.w_lim = 1e-4
+Parameters.maxhyp = 1e3
 Parameters.r_lim = 1e-3
 Parameters.nstd = 2
 
