@@ -22,6 +22,7 @@ import itertools
 import numpy as np
 import numbers
 from scipy.linalg import block_diag
+from math import isnan
 
 from .utils import connected_components
 from .lmb_filter import predict, correct
@@ -42,8 +43,9 @@ class DefaultTargetInit:
 
     def __call__(self, tracker, report):
         """Init new target from report."""
-        r = min(report.rB * tracker.params.lambdaB,
+        r = min(report.rB * tracker.params.lambdaB(report),
                 tracker.params.rBmax, 1.0)
+        print("New target:", r)
         if r < 1e-6:
             return None
         id_ = tracker.new_id()
@@ -66,7 +68,7 @@ class Parameters:
 
 Parameters.N_max = 10000
 Parameters.rBmax = 0.8
-Parameters.lambdaB = 0.1
+Parameters.lambdaB = staticmethod(lambda r: r.sensor.lambdaB)
 Parameters.kappa = models.UniformClutter(0.01)
 Parameters.init_target = DefaultTargetInit(1, 1, 1)
 Parameters.w_lim = 1e-4
@@ -203,6 +205,9 @@ class LMB:
         """Store cluster data in database."""
         for t in targets:
             if t is not None:
+                if any(isnan(p) for p in t.aa_bbox()):
+                    print("NAN!:", target, target.pdf)
+                    exit()
                 self.db.execute(("REPLACE INTO target_index "
                                  "(id, min_x, min_y, max_x, max_y) "
                                  "VALUES ({}, {}, {}, {}, {});"
@@ -223,9 +228,10 @@ class LMB:
 
     def predict(self, dT=1, aa_bbox=None):
         """Move to next timestep."""
-        prediction = {predict((self.params, t, dT))
-                      for t in self.query_targets(aa_bbox)}
-        self._save_targets(prediction)
+        targets = {predict((self.params, t, dT))
+                   for t in self.query_targets(aa_bbox)}
+        self._kill_targets(targets)
+        self._save_targets(targets)
 
     def register_scan(self, scan):
         """Register new scan."""

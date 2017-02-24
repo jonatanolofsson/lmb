@@ -35,13 +35,13 @@ def draw():
     plt.figure(figsize=(20, 10))
     params = lmb.Parameters()
     params.N_max = 50000
-    params.lambdaB = 0.1
     params.kappa = lmb.models.UniformClutter(0.0001)
     params.init_target = lmb.DefaultTargetInit(0.1, 1, 1)
     params.r_lim = 0.02
     params.nstd = 1.9
     tracker = lmb.LMB(params)
     sensor = lmb.sensors.EyeOfMordor()
+    sensor.lambdaB = 0.1
     targets = [
         np.array([0.0, 0.0,  1, 0.5]),
         np.array([0.0, 10.0, 1, -0.5]),

@@ -27,10 +27,12 @@ from shapely.geometry import box
 class SquareSensor:
     """Square sensor."""
 
-    def __init__(self, fov):
+    def __init__(self, fov, p_detect=1.0, lambdaB=1.0):
         """Init."""
         self.fov = Polygon(fov)
         self.model = position_measurement
+        self.p_detect = p_detect
+        self.lambdaB = lambdaB
 
     def bbox(self):
         """Return FOV bbox."""
@@ -46,7 +48,7 @@ class SquareSensor:
 
     def pD(self, states):
         """Probability of detection for states x."""
-        return np.array([self.in_fov(x) for x in states])
+        return np.array([self.in_fov(x) for x in states]) * self.p_detect
 
 
 class Satellite(SquareSensor):

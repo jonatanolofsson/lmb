@@ -1,4 +1,4 @@
-"""Create crosstrack.png plot."""
+"""Create icesetup.png plot."""
 
 """
     This program is free software: you can redistribute it and/or modify
@@ -22,22 +22,29 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
+from math import pi
+import pickle
 
 sys.path.append(
     os.path.dirname(os.path.dirname(
         os.path.abspath(__file__))))
 import lmb
+from lmb.utils import normalize, rotmat
 
 np.random.seed(1)
 
-simlen = 50
-N_ice = 100
+N_ice = 20
 xmin, xmax = 0, 1000
 mid = np.array([[(xmax-xmin) / 2]] * 2)
-Pz = np.diag([0.01] * 2)
-Pz_true = np.diag([0.01] * 2)
+Pz_true = np.diag([0.005] * 2)
+PLOTS_WIDE = 3
+PLOTS_HIGH = 3
+PLOT_EVERY = 15
+simlen = PLOTS_WIDE * PLOTS_HIGH * PLOT_EVERY
+plot_rlim = 0.7
 
-class df:
+
+class df():
     pass
 
 
@@ -49,10 +56,10 @@ def rot(x):
 def init_tracker():
     """Init tracker."""
     params = lmb.Parameters()
-    params.N_max = 50000
-    params.lambdaB = 0.1
+    params.N_max = 500  # FIXME
+    params.lambdaB = lambda r: r.sensor.lambdaB
     params.kappa = lmb.models.UniformClutter(0.0001)
-    params.init_target = lmb.DefaultTargetInit(0.01, 1, 1)
+    params.init_target = lmb.DefaultTargetInit(q=0.01, pv=1, pS=0.999)
     params.r_lim = 0.02
     params.nstd = 1.9
     return lmb.LMB(params)
@@ -61,8 +68,8 @@ def init_tracker():
 def init_ice():
     """Init ice objects."""
     res = df()
-    v = 1
-    pv = np.diag([0.05] * 2)
+    v = 0.8
+    pv = np.diag([0.2] * 2)
     res.positions = np.random.uniform(xmin, xmax, (2, N_ice))
     mid_vecs = (mid - res.positions)
     mid_vecs /= np.sqrt((mid_vecs ** 2).sum(axis=0))
@@ -74,85 +81,174 @@ def init_ice():
 
 def init_planes():
     """Init planes."""
-    res = df()
-    res.positions = np.array([[500], [0]])
-    res.directions = np.array([[0], [5]])
-    res.amplitudes = np.array([[300]])
-    res.omegas = np.array([[0.05]])
-    res.phases = np.array([[0]])
-    res.fovs_l = np.array([[-60]])
-    res.fovs_r = np.array([[60]])
-    res.fovs_b = np.array([[-20]])
-    res.fovs_f = np.array([[60]])
+    res = []
+
+    plane = df()
+    plane.i = len(res)
+    plane.model = sin_model
+    plane.initial_position = np.array([[500], [0]])
+    plane.direction = np.array([[0], [6]])
+    plane.amplitude = 300
+    plane.omega = 0.08
+    plane.phase = 0
+    plane.fov_l = -60
+    plane.fov_r = 60
+    plane.fov_b = -20
+    plane.fov_f = 60
+    plane.history = []
+    plane.active = lambda k: True
+    plane.plot = True
+    plane.Pz = np.diag([0.1] * 2)
+    plane.p_detect = 0.99
+    plane.lambdaB = 0.1
+    res.append(plane)
+
+    plane = df()
+    plane.i = len(res)
+    plane.model = circ_model
+    plane.initial_position = np.array([[700], [500]])
+    plane.midpoint = np.array([[500], [500]])
+    plane.omega = 9 * pi / 180
+    plane.fov_l = -60
+    plane.fov_r = 60
+    plane.fov_b = -20
+    plane.fov_f = 60
+    plane.history = []
+    plane.active = lambda k: True
+    plane.plot = True
+    plane.Pz = np.diag([0.1] * 2)
+    plane.p_detect = 0.99
+    plane.lambdaB = 0.1
+    res.append(plane)
+
+    plane = df()
+    plane.i = len(res)
+    plane.model = lambda p, k: None
+    plane.position = np.array([[-500], [-500]])
+    plane.velocity = np.array([[1], [0]])
+    plane.fov_l = -10000
+    plane.fov_r = 10000
+    plane.fov_b = -10000
+    plane.fov_f = 10000
+    plane.history = []
+    plane.active = lambda k: ((k % 75) == 0)
+    plane.plot = False
+    plane.Pz = np.diag([5] * 2)
+    plane.p_detect = 0.9
+    plane.lambdaB = 15
+    res.append(plane)
+
     return res
 
 
 def update_ice(targets):
     """Move icebergs."""
-    a = 0.1
+    a = 0.01
     pa = np.diag([0.001] * 2)
     mid_vecs = (mid - targets.positions)
     mid_vecs /= np.sqrt((mid_vecs ** 2).sum(axis=0))
     accelerations = mid_vecs * a
-    accelerations += np.random.multivariate_normal(
-        np.array([0.0]*2), pa, size=accelerations.shape[1]).T
+    # accelerations += np.random.multivariate_normal(
+        # np.array([0.0]*2), pa, size=accelerations.shape[1]).T
     targets.positions += targets.velocities
     targets.velocities += accelerations
 
 
-def plane_states(planes, t):
-    """Update planes."""
-    res = df()
-    orthodir = rot(planes.directions)
-    orthodir = orthodir / np.sqrt((orthodir ** 2).sum(axis=0))
+def sin_model(plane, t):
+    """Sine motion model for planes."""
+    orthodir = normalize(rot(plane.direction))
 
-    res.positions = planes.positions + planes.directions * t + \
-        planes.amplitudes * np.sin(planes.omegas * t + planes.phases) \
+    plane.position = plane.initial_position + plane.direction * t + \
+        plane.amplitude * np.sin(plane.omega * t + plane.phase) \
         * orthodir
 
-    res.velocities = planes.directions + \
-        planes.amplitudes * np.cos(planes.omegas * t + planes.phases) \
-        * orthodir * planes.omegas
-    res.front = res.velocities / np.sqrt((res.velocities ** 2).sum(axis=0))
-    res.left = rot(res.front)
-
-    res.fovs_fl = res.positions + res.front * planes.fovs_f - res.left * planes.fovs_l
-    res.fovs_bl = res.positions + res.front * planes.fovs_b - res.left * planes.fovs_l
-    res.fovs_br = res.positions + res.front * planes.fovs_b - res.left * planes.fovs_r
-    res.fovs_fr = res.positions + res.front * planes.fovs_f - res.left * planes.fovs_r
-
-    return res
+    plane.velocity = plane.direction + \
+        plane.amplitude * np.cos(plane.omega * t + plane.phase) \
+        * orthodir * plane.omega
 
 
-def look_for_ice(routes, planes, icebergs):
+def circ_model(plane, t):
+    """Circular motion model."""
+    pos = rotmat(plane.omega * t) @ (plane.initial_position - plane.midpoint)
+
+    plane.position = pos + plane.midpoint
+    plane.velocity = plane.omega * np.linalg.norm(pos) * normalize(rot(pos))
+
+
+def update_planes(planes, k):
+    """Update planes."""
+    for p in planes:
+        p.model(p, k)
+        p.front = normalize(p.velocity)
+        p.left = rot(p.front)
+
+        p.fov = (p.position + p.front * p.fov_f - p.left * p.fov_l).T.tolist() + \
+                (p.position + p.front * p.fov_b - p.left * p.fov_l).T.tolist() + \
+                (p.position + p.front * p.fov_b - p.left * p.fov_r).T.tolist() + \
+                (p.position + p.front * p.fov_f - p.left * p.fov_r).T.tolist()
+
+        p.history.append(p.position)
+
+
+def look_for_ice(planes, icebergs, k):
     """Retrieve, for each plane, the visible ice."""
-    res = []
-    for p in range(planes.positions.shape[1]):
-        fov = Polygon([planes.fovs_fl[:, p], planes.fovs_bl[:, p],
-                       planes.fovs_br[:, p], planes.fovs_fr[:, p]])
-        res.append([i for i in range(icebergs.positions.shape[1])
-            if fov.contains(Point(icebergs.positions[0, i], icebergs.positions[1, i]))])
-    return res
-
-
-def ice_to_scans(planes, icebergs, findings):
-    """Create a scan for each plane."""
-    return [lmb.Scan(lmb.sensors.SquareSensor(
-        [planes.fovs_fl[:, p], planes.fovs_bl[:, p],
-         planes.fovs_br[:, p], planes.fovs_fr[:, p]]),
-        [lmb.GaussianReport(np.random.multivariate_normal(
-            icebergs.positions[:, i], Pz_true),
-                    Pz, i) for i in f])
-        for p, f in enumerate(findings)]
+    for p in planes:
+        if p.active(k):
+            fov = Polygon(p.fov)
+            p.findings = [i for i in range(icebergs.positions.shape[1])
+                if fov.contains(Point(icebergs.positions[0, i], icebergs.positions[1, i]))]
+            p.scan = lmb.Scan(
+                lmb.sensors.SquareSensor(p.fov, p.p_detect, p.lambdaB),
+                [lmb.GaussianReport(np.random.multivariate_normal(
+                    icebergs.positions[:, i], Pz_true), p.Pz, i)
+                    for i in p.findings])
 
 
 def draw():
     """Create plot."""
-    plt.figure(figsize=(20, 4 * simlen // 5))
+
+    def mkplot(observed=False):
+        plt.plot([500], [500], marker='h', markersize=40, color='c')
+        plt.quiver(
+            [p.position[0, 0] for p in planes],
+            [p.position[1, 0] for p in planes],
+            [p.velocity[0, 0] for p in planes],
+            [p.velocity[1, 0] for p in planes], color='r')
+
+        if not observed:
+            plt.quiver(icebergs.positions[0, :], icebergs.positions[1, :],
+                       icebergs.velocities[0, :], icebergs.velocities[1, :])
+        else:
+            plt.quiver(icebergs.positions[0, observed],
+                       icebergs.positions[1, observed],
+                       icebergs.velocities[0, observed],
+                       icebergs.velocities[1, observed])
+
+        for p in planes:
+            if p.plot:
+                plt.gca().add_patch(patches.Polygon(
+                    p.fov, closed=True, fill=True, color='b', alpha=0.4))
+                hist_x = [float(h[0]) for h in p.history]
+                hist_y = [float(h[1]) for h in p.history]
+                plt.plot(hist_x, hist_y, 'r')
+
+                plt.quiver(icebergs.positions[0, p.findings],
+                           icebergs.positions[1, p.findings],
+                           icebergs.velocities[0, p.findings],
+                           icebergs.velocities[1, p.findings],
+                           color='g')
+
+        tracked_targets = tracker.query_targets(rlim=plot_rlim)
+        lmb.plot.plot_traces(tracked_targets, covellipse=False, max_back=1, alpha=0.8)
+
+        plt.xlim([xmin, xmax])
+        plt.ylim([xmin, xmax])
+
+    plt.figure(figsize=(4 * PLOTS_WIDE, 4 * simlen // (PLOTS_WIDE * PLOT_EVERY)))
     tracker = init_tracker()
     icebergs = init_ice()
-    routes = init_planes()
-    plane_history = []
+    planes = init_planes()
+    found_icebergs = set()
 
     for k in range(simlen):
         print(k)
@@ -161,42 +257,30 @@ def draw():
             update_ice(icebergs)
             tracker.predict()
 
-        plt.quiver(icebergs.positions[0, :], icebergs.positions[1, :],
-                   icebergs.velocities[0, :], icebergs.velocities[1, :])
+        update_planes(planes, k)
+        look_for_ice(planes, icebergs, k)
+        found_icebergs |= {i for p in planes for i in p.findings}
+        print("Enof:", tracker.enof_targets())
 
-        planes = plane_states(routes, k)
-        plane_history.append(planes)
+        for p in planes:
+            if p.active(k):
+                tracker.register_scan(p.scan)
 
-        plt.quiver(planes.positions[0, :], planes.positions[1, :],
-                   planes.velocities[0, :], planes.velocities[1, :], color='r')
+        if k % PLOT_EVERY == 0:
+            plt.subplot(simlen // (PLOTS_WIDE * PLOT_EVERY), PLOTS_WIDE, (k // PLOT_EVERY) + 1)
+            plt.gca().set_title('t={} s'.format(k))
+            mkplot()
 
-        findings = look_for_ice(routes, planes, icebergs)
-        scans = ice_to_scans(planes, icebergs, findings)
-        for scan in scans:
-            tracker.register_scan(scan)
+    plt.gcf().savefig('icesetup.png', bbox_inches='tight')
 
-        for i in range(planes.positions.shape[1]):
-            plt.gca().add_patch(
-                patches.Polygon(
-                    [planes.fovs_fl[:, i], planes.fovs_bl[:, i],
-                     planes.fovs_br[:, i], planes.fovs_fr[:, i]],
-                    closed=True, fill=True, color='b', alpha=0.4))
-            hist_x = [h.positions[0, i] for h in plane_history]
-            hist_y = [h.positions[1, i] for h in plane_history]
-            plt.plot(hist_x, hist_y, 'r')
+    plt.figure()
+    mkplot()
+    plt.gca().set_title('t={}'.format(k))
+    plt.gcf().savefig('icesetupfinal.png', bbox_inches='tight')
 
-            plt.quiver(icebergs.positions[0, findings[i]],
-                       icebergs.positions[1, findings[i]],
-                       icebergs.velocities[0, findings[i]],
-                       icebergs.velocities[1, findings[i]],
-                       color='g')
-
-        tracked_targets = tracker.query_targets()
-        lmb.plot.plot_traces(tracked_targets, covellipse=True)
-
-        plt.xlim([xmin, xmax])
-        plt.ylim([xmin, xmax])
-
+    tracked_targets = tracker.query_targets()
+    with open("tracker.data", 'wb') as file_:
+        pickle.dump(tracked_targets, file_)
 
 def parse_args(*argv):
     """Parse args."""
@@ -209,11 +293,6 @@ def main(*argv):
     """Main."""
     args = parse_args(*argv)
     draw()
-    if args.show:
-        plt.show()
-    else:
-        plt.gcf().savefig(os.path.splitext(os.path.basename(__file__))[0],
-                          bbox_inches='tight')
 
 
 if __name__ == '__main__':
