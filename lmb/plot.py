@@ -19,13 +19,14 @@ import matplotlib.colors
 from numpy.random import RandomState
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, Rectangle
+import numpy as np
 
 from .utils import cov_ellipse
 
 CMAP = matplotlib.colors.ListedColormap(RandomState(0).rand(256*256, 3))
 
 
-def plot_trace(t, c=0, covellipse=True, max_back=None, **kwargs):
+def plot_trace(t, c=0, covellipse=True, max_back=None, r_values=False, track_id=False, velocity=False, trace=True, **kwargs):
     """Plot single trace."""
     max_back = max_back or 0
     xs, ys, vxs, vys = [], [], [], []
@@ -42,11 +43,19 @@ def plot_trace(t, c=0, covellipse=True, max_back=None, **kwargs):
         ca.set_facecolor(CMAP(c))
         ce.set_facecolor('none')
         ce.set_edgecolor(CMAP(c))
-        ce.set_linewidth(4)
-    plt.plot(xs, ys, color=CMAP(c), **kwargs)
-    #plt.plot(xs[-1], ys[-1], marker='*', color=CMAP(c), **kwargs)
-    #plt.quiver(xs[-1], ys[-1], vxs[-1], vys[-1], color=CMAP(c), **kwargs)
-
+        ce.set_linewidth(4)        
+    if trace:
+        plt.plot(xs, ys, color=CMAP(c), **kwargs)
+    if r_values:    
+        plt.text(t.pdf.mean()[0]+20,t.pdf.mean()[1], '{0:.2f}'.format(t.r), color=CMAP(c), fontsize=16)
+    if track_id:
+        plt.text(t.pdf.mean()[0]+20,t.pdf.mean()[1]+20, str(t.id), color=CMAP(c), )
+    if velocity:
+        v = np.array([vxs[-1], vys[-1]])
+        va = np.sqrt(vxs[-1]*vxs[-1] + vys[-1]*vys[-1])
+        if va > 15:
+            v *= 15 / va
+        plt.plot([xs[-1],xs[-1]+v[0]], [ys[-1],ys[-1]+v[1]], color=CMAP(c), linewidth=3)
 
 def plot_traces(targets, cseed=0, covellipse=True, max_back=None, **kwargs):
     """Plot all targets' traces."""
