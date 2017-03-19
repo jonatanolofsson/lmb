@@ -15,6 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import os
 import sqlite3
 import pickle
 from collections import defaultdict
@@ -23,9 +24,11 @@ import numpy as np
 import numbers
 from scipy.linalg import block_diag
 from math import isnan
+import threading
+import queue
 
 from .utils import connected_components
-from .lmb_filter import predict, correct
+from .lmb_filter import predict, correct, threader
 from .target import Target
 from .pf import PF
 from . import models
@@ -75,6 +78,8 @@ Parameters.w_lim = 1e-4
 Parameters.maxhyp = 1e3
 Parameters.r_lim = 1e-3
 Parameters.nstd = 2
+Parameters.N_PRED_THREADS = os.cpu_count()
+Parameters.N_CORR_THREADS = os.cpu_count()
 
 
 class LMB:
@@ -88,6 +93,34 @@ class LMB:
         self.dbc = sqlite3.connect(dbfile)
         self.db = self.dbc.cursor()
         self._init_db()
+
+        self.HALT = threading.Event()
+
+        self.predict_queue = queue.Queue()
+        self.predict_threads = [
+            threading.Thread(target=threader, args=(self, self.predict_queue, predict))
+            for _ in range(self.params.N_PRED_THREADS)]
+        for t in self.predict_threads:
+            t.start()
+
+        self.correct_queue = queue.Queue()
+        self.correct_threads = [
+            threading.Thread(target=threader, args=(self, self.correct_queue, correct))
+            for _ in range(self.params.N_CORR_THREADS)]
+        for t in self.correct_threads:
+            t.start()
+
+    def __enter__(self):
+        """Enter."""
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Exit and clean up."""
+        self.HALT.set()
+        for t in self.predict_threads:
+            t.join()
+        for t in self.correct_threads:
+            t.join()
 
     def _init_db(self):
         """Init database."""
@@ -229,19 +262,27 @@ class LMB:
 
     def predict(self, dT=1, aa_bbox=None):
         """Move to next timestep."""
-        targets = {predict((self.params, t, dT))
-                   for t in self.query_targets(aa_bbox)}
+        targets = self.query_targets(aa_bbox)
+        for t in targets:
+            self.predict_queue.put((t, dT))
+
+        self.predict_queue.join()
+
         self._kill_targets(targets)
         self._save_targets(targets)
 
     def register_scan(self, scan):
         """Register new scan."""
-        cres = [correct((self.params, targets, reports, scan.sensor))
-                for targets, reports in self._cluster(scan)]
+        targets = []
+        stats = queue.Queue()
+        for ctargets, creports in self._cluster(scan):
+            self.correct_queue.put((ctargets, creports, scan.sensor, stats))
+            targets += ctargets
 
-        targets = {t for c in cres for t in c.targets}
+        self.correct_queue.join()
+
+        targets = set(targets)
         self._kill_targets(targets)
         self._save_targets(targets)
-        reports = list(itertools.chain.from_iterable(s.reports for s in cres))
-        self.birth(reports)
-        return cres
+        self.birth(scan.reports)
+        return list(stats.queue)

@@ -16,36 +16,42 @@
 """
 import numpy as np
 from math import exp
+import queue
 
-from .utils import LARGE, df
+from .utils import LARGE
 from .hypgen import murty
 
 
-def predict(args):
+def threader(self, q, callback):
+    """Threader helper."""
+    while not self.HALT.is_set():
+        try:
+            args = q.get(timeout=0.1)
+            callback(self, *args)
+            q.task_done()
+        except queue.Empty:
+            pass
+
+
+def predict(self, target, dT):
     """Perform parallel time update on cluster."""
-    (params, target, dT) = args
-    target.predict(params, dT)
-    return target
+    target.predict(self.params, dT)
 
 
-def correct(args):
+def correct(self, targets, reports, sensor, stats):
     """Update cluster from multithread process."""
-    (params, targets, reports, sensor) = args
     N = len(targets)
     M = len(reports)
     # print("Cluster:", N, M)
     # print("Targets:", targets)
 
     if N == 0:
-        resdf = df()
-        resdf.targets = targets
-        resdf.reports = reports
-        resdf.nhyps = 0
-        return resdf
+        stats.put({"nhyps": 0})
+        return
 
     C = np.full((N, M + 2 * N), LARGE)
     for i, t in enumerate(targets):
-        C[i, range(M)] = t.match(params, sensor, reports)
+        C[i, range(M)] = t.match(self.params, sensor, reports)
         C[i, M + i] = t.missed()
         C[i, M + N + i] = t.false()
 
@@ -62,7 +68,7 @@ def correct(args):
         assignment[assignment >= M] = M
         weights[ind, assignment[ind]] += w
 
-        if w / w_sum < params.w_lim or nhyps >= params.maxhyp:
+        if w / w_sum < self.params.w_lim or nhyps >= self.params.maxhyp:
             break
     print("nhyps:", nhyps, "tracks:", N, "meas:", M)
 
@@ -74,8 +80,4 @@ def correct(args):
     for r, ruk in zip(reports, np.sum(weights, axis=0)):
         r.ruk = ruk
 
-    resdf = df()
-    resdf.targets = targets
-    resdf.reports = reports
-    resdf.nhyps = nhyps
-    return resdf
+    stats.put({"nhyps": nhyps})
