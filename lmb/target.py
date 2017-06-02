@@ -85,4 +85,4 @@ class Target:
 
     def __repr__(self):
         """String representation of object."""
-        return "T({} / {})".format(self.id, self.r)
+        return "T({} / {}: {})".format(self.id, self.r, self.pdf.mean())
