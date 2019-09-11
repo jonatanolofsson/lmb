@@ -17,9 +17,19 @@
 
 import queue
 from copy import copy
-from lapjv import lap
+from lapjv import lapjv
+import numpy as np
 
 from .utils import LARGE
+
+
+def lap(cost):
+    rows, cols = cost.shape[0], cost.shape[1]
+    sz = max(rows, cols)
+    C = np.zeros((sz,sz))
+    C[0:rows, 0:cols] = cost
+    rind, cind, other = lapjv(C)
+    return other[0], rind[:rows]
 
 
 def permgen(lists, presorted=False):

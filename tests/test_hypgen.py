@@ -21,7 +21,7 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from lmb.hypgen import murty, permgen, lap
+from pylmb.hypgen import murty, permgen, lap
 
 MURTY_COST = np.matrix([[7, 51, 52, 87, 38, 60, 74, 66, 0, 20],
                         [50, 12, 0, 64, 8, 53, 0, 46, 76, 42],
@@ -41,20 +41,22 @@ class TestLap(unittest.TestCase):
     def test_lap(self):
         """Test LAP solver."""
         res = lap(MURTY_COST)
+        print(res)
         self.assertAlmostEqual(
             MURTY_COST[range(len(res[1])), res[1]].sum(),
             res[0])
+        print(res[1])
 
 
 class TestMurty(unittest.TestCase):
     """Test Murty algorithm."""
 
-    def disabled_test_murty(self):
+    def test_murty(self):
         """Test murty algo."""
         pre_res = None
         n = 0
         for res in murty(MURTY_COST):
-            # print('res:', res)
+            print('res:', res[1], res[0])
             self.assertAlmostEqual(
                 MURTY_COST[range(len(res[1])), res[1]].sum(),
                 res[0])
@@ -62,6 +64,39 @@ class TestMurty(unittest.TestCase):
                 self.assertGreaterEqual(res[0], pre_res[0])
             pre_res = res
             n += 1
+            if n == 10:
+                break
+
+    def test_murty_asym2(self):
+        """Test asymmetric inputs for murty."""
+        pre_res = None
+        n = 0
+        for res in murty(MURTY_COST[:5, :]):
+            print('res:', res[1], res[0])
+            self.assertAlmostEqual(
+                MURTY_COST[range(len(res[1])), res[1]].sum(), res[0])
+            if pre_res is not None:
+                self.assertGreaterEqual(res[0], pre_res[0])
+            pre_res = res
+            n += 1
+            if n == 10:
+                break
+
+    def disabled_test_full_murty(self):
+        """Test murty algo."""
+        pre_res = None
+        n = 0
+        with open('pyoutput.log', 'w') as f:
+            for res in murty(MURTY_COST):
+                f.write(str(res[0]) + " [" + " ".join(str(x) for x in res[1]) + "]" + '\n')
+                # print('res:', res)
+                self.assertAlmostEqual(
+                    MURTY_COST[range(len(res[1])), res[1]].sum(),
+                    res[0])
+                if pre_res is not None:
+                    self.assertGreaterEqual(res[0], pre_res[0])
+                pre_res = res
+                n += 1
         self.assertEqual(n, 3628800)
 
     def test_murty_asym(self):

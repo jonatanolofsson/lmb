@@ -20,7 +20,7 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import lmb.utils
+from pylmb import utils
 
 
 class TestUtils(unittest.TestCase):
@@ -30,7 +30,7 @@ class TestUtils(unittest.TestCase):
         """Test the overlap_p function."""
         a = (0, 1, 0, 1)
         b = (0.2, 2, 0.2, 2)
-        res = lmb.utils.overlap_pa(a, b)
+        res = utils.overlap_pa(a, b)
 
         self.assertAlmostEqual(res, 0.64)
 
@@ -38,7 +38,7 @@ class TestUtils(unittest.TestCase):
         """Test the overlap_p function."""
         a = (0, 1, 0, 1)
         b = (-0.2, 2, -0.2, 2)
-        res = lmb.utils.overlap_pa(a, b)
+        res = utils.overlap_pa(a, b)
 
         self.assertAlmostEqual(res, 1)
 
@@ -46,6 +46,6 @@ class TestUtils(unittest.TestCase):
         """Test the overlap_p function."""
         a = (0, 1, 0, 1)
         b = (0.2, 0.8, 0.2, 0.8)
-        res = lmb.utils.overlap_pa(a, b)
+        res = utils.overlap_pa(a, b)
 
         self.assertAlmostEqual(res, 0.36)

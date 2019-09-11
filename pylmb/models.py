@@ -52,14 +52,14 @@ class ConstantVelocityModel:
 
 def position_measurement(x):
     """Velocity measurement model."""
-    H = np.array([[1, 0, 0, 0], [0, 1, 0, 0]])
-    return (H @ x.T).T
+    return (position_measurement.H @ x.T).T
+position_measurement.H = np.array([[1, 0, 0, 0], [0, 1, 0, 0]])
 
 
 def velocity_measurement(x):
     """Velocity measurement model."""
-    H = np.array([[0, 0, 1, 0], [0, 0, 0, 1]])
-    return (H @ x.T).T
+    return (velocity_measurement.H @ x.T).T
+velocity_measurement.H = np.array([[0, 0, 1, 0], [0, 0, 0, 1]])
 
 class UniformClutter:
     """Uniform clutter model."""

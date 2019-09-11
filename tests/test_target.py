@@ -21,7 +21,7 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from lmb.target import Target
+from pylmb.target import Target
 
 
 class TestTarget(unittest.TestCase):

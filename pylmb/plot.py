@@ -43,10 +43,10 @@ def plot_trace(t, c=0, covellipse=True, max_back=None, r_values=False, track_id=
         ca.set_facecolor(CMAP(c))
         ce.set_facecolor('none')
         ce.set_edgecolor(CMAP(c))
-        ce.set_linewidth(4)        
+        ce.set_linewidth(4)
     if trace:
         plt.plot(xs, ys, color=CMAP(c), **kwargs)
-    if r_values:    
+    if r_values:
         plt.text(t.pdf.mean()[0]+20,t.pdf.mean()[1], '{0:.2f}'.format(t.r), color=CMAP(c), fontsize=16)
     if track_id:
         plt.text(t.pdf.mean()[0]+20,t.pdf.mean()[1]+20, str(t.id), color=CMAP(c), )

@@ -22,7 +22,7 @@ import sys
 from math import pi, exp
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import lmb
+import pylmb as lmb
 
 np.random.seed(0)
 

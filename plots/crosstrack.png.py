@@ -32,7 +32,7 @@ np.random.seed(1)
 
 def draw():
     """Create plot."""
-    plt.figure(figsize=(20, 10))
+    plt.figure(figsize=(10, 10))
     params = lmb.Parameters()
     params.N_max = 50000
     params.kappa = lmb.models.UniformClutter(0.0001)

@@ -33,7 +33,8 @@ class GaussianReport:
 
     def likelihood(self, x):
         """Calculate the likelihood of x generating report."""
-        return multivariate_normal.pdf(self.sensor.model(x), self.z, self.R)
+        return multivariate_normal.pdf(
+            self.sensor.model(x), self.z, self.R)
 
     def bbox(self, nstd):
         """Return report bbox."""
