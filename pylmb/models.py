@@ -37,9 +37,9 @@ class ConstantVelocityModel:
     def __call__(self, pdf, dT):
         """Step model."""
         F = np.array([[1, 0, dT, 0],
-                       [0, 1, 0, dT],
-                       [0, 0, 1, 0],
-                       [0, 0, 0, 1]])
+                      [0, 1, 0, dT],
+                      [0, 0, 1, 0],
+                      [0, 0, 0, 1]])
         Q = np.array([[dT ** 3 / 3, 0,           dT ** 2 / 2, 0],
                       [0,           dT ** 3 / 3, 0,           dT ** 2 / 2],
                       [dT ** 2 / 2, 0,           dT,          0],

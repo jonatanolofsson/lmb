@@ -14,11 +14,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
-LARGE = 10000.0
 import numpy as np
 from math import sin, cos, pi, sqrt
 from shapely.geometry.polygon import Polygon
+LARGE = 10000.0
 
 
 class PrioItem:
